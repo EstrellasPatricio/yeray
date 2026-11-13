@@ -1,0 +1,14 @@
+services:
+  backend:
+    build: .
+    container_name: yeray_backend
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - PORT=${PORT:-3000}
+    volumes:
+      - ./src:/app/src
