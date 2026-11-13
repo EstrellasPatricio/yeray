@@ -73,3 +73,13 @@ Cuando se incorporen los primeros componentes ejecutables, este README se amplia
 ## Equipo
 
 Proyecto de **Las Estrellas Patricio**.
+
+- Jose González Blanco
+- Sofía Si Villalba Jiménez
+- Alejandro Jiménez González
+- Adrián Tejada Macías
+- Soraya Bennai Sadqi
+- Manuel Espinosa Llabrés
+- Salma Boulagna Moreno
+- Gonzalo Ruiz Sánchez
+- Alberto Banderas Sánchez
