@@ -1,80 +1,111 @@
 # URL-INFO
 
-Cómo obtener la URL de la página en el navegador del cliente **respetando la privacidad**.
+Cómo obtener la URL de la página visitada desde la extensión de Yerai **respetando la privacidad** y enviar al backend solo los datos necesarios para analizar el sitio.
 
 ## Enfoque
 
-Usamos `window.location` de JavaScript y **limpiamos los datos sensibles antes de enviarlos al servidor**.
+Un script de contenido puede leer `window.location` de la página en la que se ejecuta. El `window.location` del popup, en cambio, corresponde al propio popup: para obtener la URL de la tienda desde allí hay que consultar la pestaña activa con la API del navegador.
 
-> Acceder a la URL de la propia página es una función estándar del navegador y **no requiere permisos invasivos**.
+La primera versión propuesta analiza la reputación del sitio cuando la persona abre el popup. Con el permiso `activeTab`, la extensión puede obtener temporalmente la URL de esa pestaña. No necesita leer las demás pestañas. Un análisis automático de las páginas visitadas requeriría definir por separado el alcance y los permisos de los scripts de contenido.
+
+**La extensión envía al backend el nombre del host y el protocolo para que analice el sitio.** No envía la URL completa, la ruta, los parámetros de consulta ni el fragmento. Las claves de los servicios de reputación permanecen en el backend.
 
 ## Flujo
 
+1. La persona abre el popup y solicita analizar la tienda.
+2. La extensión obtiene la URL de la pestaña activa. Si no hay acceso a ella, informa de que no puede analizarla.
+3. Acepta solo URL `http:` o `https:` y extrae `hostname` y `protocol`.
+4. Envía esos dos campos al backend en la petición de análisis.
+5. El backend valida la entrada, descarta destinos locales o privados, consulta las fuentes de reputación necesarias y devuelve un resultado orientativo.
+
+Ejemplo de extracción a partir de la URL de la pestaña activa:
+
 ```javascript
-// Obtener la URL actual mediante la API estándar URL
-const urlActual = new URL(window.location.href);
+const [pestana] = await browser.tabs.query({ active: true, currentWindow: true });
+if (!pestana?.url) {
+  throw new Error('No se puede obtener la URL de esta pestaña');
+}
 
-// Construir una versión limpia sin parámetros de consulta (?id=123) ni fragmentos (#token)
-const urlLimpia = `${urlActual.origin}${urlActual.pathname}`;
+const urlActual = new URL(pestana.url);
 
-console.log(urlLimpia);
+if (urlActual.protocol !== 'http:' && urlActual.protocol !== 'https:') {
+  throw new Error('Esta página no se puede analizar');
+}
+
+const datosParaElBackend = {
+  hostname: urlActual.hostname,
+  protocolo: urlActual.protocol.slice(0, -1),
+};
 ```
+
+**Contenido propuesto de la petición al backend:**
+
+```json
+{
+  "hostname": "tienda.ejemplo.com",
+  "protocolo": "https"
+}
+```
+
+El endpoint y esta petición todavía no están implementados. El backend debe volver a validar ambos campos; la comprobación hecha en la extensión no sustituye la validación del servidor.
+
+En un script de contenido, la misma URL se puede obtener con `new URL(window.location.href)`. La expresión `${urlActual.origin}${urlActual.pathname}` elimina la consulta y el fragmento, pero **no garantiza que la ruta sea anónima**: `/pedido/cliente@example.com` seguiría conteniendo un dato personal. Por eso la ruta no se envía en el flujo propuesto.
 
 ## Otras partes útiles de la URL
 
-| Propiedad                  | Descripción                          | Ejemplo           |
-| -------------------------- | ------------------------------------ | ----------------- |
-| `window.location.protocol` | Protocolo web utilizado              | `https:`          |
-| `window.location.host`     | Dominio y puerto                     | `ejemplo.com:3000`|
-| `window.location.hostname` | Solo el dominio                      | `ejemplo.com`     |
-| `window.location.pathname` | Ruta de la página                    | `/ruta/pagina`    |
-| `window.location.search`   | Parámetros GET                       | `?id=123`         |
-| `window.location.hash`     | Ancla o fragmento                    | `#seccion`        |
-| `window.location.origin`   | Protocolo + dominio + puerto         | `https://ejemplo.com:3000` |
-| `window.location.port`     | Solo el puerto                       | `3000`            |
-| `url.username` / `url.password` | Credenciales incluidas en la URL (solo en el objeto `URL`) | `https://usuario:clave@ejemplo.com` |
-
-> Si la URL lleva credenciales (`username` / `password`), es un motivo más para **limpiarla antes de enviarla** al servidor.
+| Propiedad | Descripción | Ejemplo | ¿Se envía al backend? |
+| --- | --- | --- | --- |
+| `url.protocol` | Protocolo web utilizado | `https:` | Sí, como `https` |
+| `url.host` | Dominio y puerto | `ejemplo.com:3000` | No |
+| `url.hostname` | Nombre del host, incluido el subdominio | `tienda.ejemplo.com` | Sí |
+| `url.pathname` | Ruta de la página | `/ruta/pagina` | No |
+| `url.search` | Parámetros de consulta | `?id=123` | No |
+| `url.hash` | Fragmento | `#seccion` | No |
+| `url.origin` | Protocolo, dominio y puerto | `https://ejemplo.com:3000` | No |
+| `url.port` | Puerto | `3000` | No |
+| `url.username` / `url.password` | Credenciales incluidas en la URL | `https://usuario:clave@ejemplo.com` | No |
 
 ## Leer parámetros con `URLSearchParams`
 
-En lugar de trocear `location.search` a mano:
+Si una funcionalidad futura necesita interpretar parámetros, se utiliza `URLSearchParams` en lugar de dividir `search` manualmente:
 
 ```javascript
-const params = new URLSearchParams(window.location.search);
+const params = new URLSearchParams(urlActual.search);
 
-params.get('id');      // "123"
-params.has('debug');   // true / false
-params.getAll('tag');  // todos los valores si el parámetro se repite
+params.get('id');      // Primer valor de id
+params.has('debug');   // true o false
+params.getAll('tag');  // Todos los valores si se repite tag
 ```
+
+Leer un parámetro localmente no implica enviarlo al backend. Cualquier dato adicional que se quiera transmitir deberá justificarse y documentarse.
 
 ## Privacidad
 
-- **El `#hash` nunca llega al servidor** en la petición HTTP: solo existe en el navegador (por eso a veces se usa para tokens, p. ej. en OAuth, así no quedan guardados en los logs del servidor). Solo lo guardaría si utilizamos window.location.hash y lo acaba enviando.
-- **`document.referrer`** indica desde qué página viene el usuario, aunque puede llegar vacío o recortado según la `Referrer-Policy`.
+- El fragmento `#hash` no se incluye en la petición HTTP de esa URL. JavaScript sí puede leerlo y enviarlo expresamente; Yerai no lo enviará.
+- `document.referrer` puede indicar de dónde llegó la persona, pero puede estar vacío o limitado por la política del sitio. No es necesario para este análisis y Yerai no lo enviará.
+- La política `strict-origin-when-cross-origin` es la predeterminada cuando el sitio no define otra. Su efecto depende del destino:
 
-  | Política | Si el usuario está en tu web y pincha un enlace a otra, esta recibe... |
+  | Destino de la petición | Información de referencia enviada desde `https://tuweb.com/perfil?id=123` |
   | --- | --- |
-  | Sin restricción | `https://tuweb.com/perfil?id=123&email=pepe@...` (todo) |
-  | `strict-origin-when-cross-origin` | `https://tuweb.com/` (solo el dominio) |
-  | `no-referrer` | Nada |
-- **`Referrer-Policy`**: evita que los sitios a los que enlazas reciban tu URL completa:
+  | Mismo origen | URL con ruta y consulta, sin fragmento |
+  | Otro origen HTTPS | Solo el origen `https://tuweb.com/` |
+  | Destino HTTP | Ninguna |
 
-  ```html
-  <meta name="referrer" content="strict-origin-when-cross-origin">
-  ```
+  Una web puede establecer otra `Referrer-Policy`. La extensión no puede imponer una etiqueta `<meta name="referrer">` a todas las tiendas que visita la persona.
+- Una página web normal no puede enumerar las pestañas ni leer directamente el documento de un iframe de otro origen. La *same-origin policy* considera el protocolo, el dominio y el puerto. Esta limitación del código de la página no describe por sí sola los permisos de una extensión:
 
-  Es el valor por defecto en los navegadores modernos.
-- **Lo que no se puede leer**: la URL de **otras pestañas** ni la de un **iframe de otro dominio**. La *same-origin policy* lo bloquea; para eso haría falta una extensión del navegador con permisos.
-
-  Una página solo puede acceder a datos de otra si comparten **origen** (mismo protocolo, dominio y puerto):
-
-  | Desde `https://tuweb.com` intentas leer... | ¿Se puede? |
+  | Desde `https://tuweb.com` se intenta leer directamente un documento en... | ¿Comparte origen? |
   | --- | --- |
-  | `https://tuweb.com/otra-pagina` | ✅ Mismo origen |
-  | `http://tuweb.com` | ❌ Cambia el protocolo |
-  | `https://api.tuweb.com` | ❌ Cambia el dominio (el subdominio cuenta) |
-  | `https://tuweb.com:8080` | ❌ Cambia el puerto |
+  | `https://tuweb.com/otra-pagina` | Sí |
+  | `http://tuweb.com` | No: cambia el protocolo |
+  | `https://api.tuweb.com` | No: cambia el subdominio |
+  | `https://tuweb.com:8080` | No: cambia el puerto |
 
+  Compartir origen permite acceder a un documento del que la página tenga una referencia, por ejemplo un iframe; no permite enumerar pestañas arbitrarias.
+- Una extensión puede obtener la URL de la pestaña activa con `activeTab` tras la acción de la persona. El permiso `tabs` o permisos de sitios conceden un alcance mayor. Si se implementa análisis automático con WXT, habrá que definir los patrones `matches` de los scripts de contenido y explicar qué páginas se analizarán.
 
-> Una extensión del navegador **sí puede ver las URLs de todas las pestañas**, pero solo si el usuario la instala y **acepta ese permiso explícitamente**. Una página web normal nunca puede hacerlo.
+## Fuentes
+
+- [Chrome: permiso `activeTab`](https://developer.chrome.com/docs/extensions/develop/concepts/activeTab) y [API de pestañas](https://developer.chrome.com/docs/extensions/reference/api/tabs).
+- [WXT: entradas de popup y scripts de contenido](https://wxt.dev/guide/essentials/entrypoints).
+- [MDN: partes de una URL](https://developer.mozilla.org/en-US/docs/Web/API/Location), [fragmentos](https://developer.mozilla.org/en-US/docs/Web/URI/Reference/Fragment) y [`Referrer-Policy`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referrer-Policy).
