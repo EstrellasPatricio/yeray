@@ -6,7 +6,11 @@ const fastify = Fastify({ logger: true });
 
 const start = async () => {
     try {
-        await fastify.register(cors, { origin: true });
+        const allowedOrigins = process.env.CORS_ORIGIN
+            ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
+            : ['http://localhost:5173'];
+
+        await fastify.register(cors, { origin: allowedOrigins });
         await fastify.register(pingRoutes);
 
         const port = Number(process.env.PORT) || 3000;
