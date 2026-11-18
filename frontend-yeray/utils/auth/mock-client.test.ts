@@ -14,6 +14,7 @@ describe('createMockAuthApi', () => {
 
   it('registra una cuenta y permite iniciar sesión con ella desde otra instancia', async () => {
     const registered = await api().register(credentials);
+    if (!('tokens' in registered)) throw new Error('se esperaba una sesión');
     expect(registered.user.email).toBe('ana@uma.es');
     expect(registered.tokens.accessTokenExpiresIn).toBeGreaterThan(0);
 
@@ -53,8 +54,34 @@ describe('createMockAuthApi', () => {
     });
   });
 
+  it('con confirmación de correo responde pendiente y bloquea el login hasta confirmar', async () => {
+    let now = 1_000;
+    const confirming = () =>
+      createMockAuthApi({
+        latencyMs: 0,
+        requireEmailConfirmation: true,
+        confirmationDelayMs: 5_000,
+        now: () => now,
+      });
+
+    await expect(confirming().register(credentials)).resolves.toEqual({
+      confirmationRequired: true,
+      email: 'ana@uma.es',
+    });
+    await expect(confirming().login(credentials)).rejects.toMatchObject({
+      code: 'EMAIL_NOT_CONFIRMED',
+    });
+
+    now += 5_000;
+    await expect(confirming().login(credentials)).resolves.toMatchObject({
+      user: { email: 'ana@uma.es' },
+    });
+  });
+
   it('rota el refresh token e invalida el anterior', async () => {
-    const { tokens } = await api().register(credentials);
+    const response = await api().register(credentials);
+    if (!('tokens' in response)) throw new Error('se esperaba una sesión');
+    const { tokens } = response;
 
     const refreshed = await api().refresh({ refreshToken: tokens.refreshToken });
     expect(refreshed.tokens.refreshToken).not.toBe(tokens.refreshToken);
@@ -66,7 +93,9 @@ describe('createMockAuthApi', () => {
   });
 
   it('logout revoca el refresh token y es idempotente', async () => {
-    const { tokens } = await api().register(credentials);
+    const response = await api().register(credentials);
+    if (!('tokens' in response)) throw new Error('se esperaba una sesión');
+    const { tokens } = response;
 
     await api().logout({ refreshToken: tokens.refreshToken });
     await expect(api().logout({ refreshToken: tokens.refreshToken })).resolves.toBeUndefined();

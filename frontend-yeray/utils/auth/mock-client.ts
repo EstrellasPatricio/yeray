@@ -13,6 +13,8 @@ import { validateEmail, validatePassword } from './validation';
 interface MockUser extends AuthUser {
   salt: string;
   passwordHash: string;
+  /** Momento en que el correo cuenta como confirmado (simulación del enlace del correo). */
+  confirmedAt?: number;
 }
 
 interface MockRefreshToken {
@@ -48,10 +50,21 @@ const normalizeEmail = (email: string) => email.trim().toLowerCase();
 interface MockAuthApiOptions {
   /** Retardo artificial para ver los estados de carga en la interfaz. */
   latencyMs?: number;
+  /**
+   * Simula que el backend exige confirmar el correo: el registro responde 202
+   * y la cuenta se da por confirmada pasados `confirmationDelayMs`.
+   */
+  requireEmailConfirmation?: boolean;
+  confirmationDelayMs?: number;
   now?: () => number;
 }
 
-export function createMockAuthApi({ latencyMs = 400, now = Date.now }: MockAuthApiOptions = {}): AuthApi {
+export function createMockAuthApi({
+  latencyMs = 400,
+  requireEmailConfirmation = false,
+  confirmationDelayMs = 10_000,
+  now = Date.now,
+}: MockAuthApiOptions = {}): AuthApi {
   const delay = () => new Promise((resolve) => setTimeout(resolve, latencyMs));
 
   function issueSession(db: MockDb, user: MockUser): AuthResponse {
@@ -84,8 +97,13 @@ export function createMockAuthApi({ latencyMs = 400, now = Date.now }: MockAuthA
         email: normalized,
         salt,
         passwordHash: await hashPassword(salt, password),
+        confirmedAt: requireEmailConfirmation ? now() + confirmationDelayMs : now(),
       };
       db.users.push(user);
+      if (requireEmailConfirmation) {
+        await dbItem.setValue(db);
+        return { confirmationRequired: true, email: normalized };
+      }
       const session = issueSession(db, user);
       await dbItem.setValue(db);
       return session;
@@ -97,6 +115,9 @@ export function createMockAuthApi({ latencyMs = 400, now = Date.now }: MockAuthA
       const user = db.users.find((candidate) => candidate.email === normalizeEmail(email));
       if (!user || user.passwordHash !== (await hashPassword(user.salt, password))) {
         throw new AuthApiError('INVALID_CREDENTIALS', 'Credenciales incorrectas', 401);
+      }
+      if (user.confirmedAt !== undefined && user.confirmedAt > now()) {
+        throw new AuthApiError('EMAIL_NOT_CONFIRMED', 'Correo sin confirmar', 403);
       }
       const session = issueSession(db, user);
       await dbItem.setValue(db);

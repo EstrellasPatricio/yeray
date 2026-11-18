@@ -4,7 +4,13 @@ import { defineConfig } from 'wxt';
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   manifest: {
+    name: 'Yeray',
+    description: 'Ayuda a detectar señales de riesgo en tiendas en línea.',
     // chrome.storage guarda la sesión (ver docs de almacenamiento).
     permissions: ['storage'],
+  },
+  dev: {
+    // El puerto 3000 queda libre para la API principal (backend).
+    server: { port: 3100 },
   },
 });

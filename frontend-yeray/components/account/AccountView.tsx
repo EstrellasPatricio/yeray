@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { useSession } from '@/hooks/useSession';
+import { useSession, type SessionViewState } from '@/hooks/useSession';
 import { isAuthMockEnabled } from '@/utils/auth/client';
 import type { Credentials } from '@/utils/auth/contract';
-import { authErrorMessage } from '@/utils/auth/messages';
+import { authErrorMessage, confirmationSentMessage } from '@/utils/auth/messages';
+import type { AuthMode } from '@/utils/auth/validation';
 
 import { Icon } from '../icons';
 import { AuthPanel } from './AuthPanel';
@@ -16,13 +17,14 @@ export function AccountView() {
   const [notice, setNotice] = useState<Notice | null>(null);
   // Tras una acción del usuario se lleva el foco al título para anunciar el cambio de vista.
   const [focusHeading, setFocusHeading] = useState(false);
-  const [submittedOnce, setSubmittedOnce] = useState(false);
+  // Estado cuyo motivo de cierre ya se ha descartado al volver a enviar el formulario.
+  const [dismissedState, setDismissedState] = useState<SessionViewState | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
-  // Si no se pudo recuperar la sesión guardada, se explica el motivo hasta el primer envío.
+  // Si la sesión se perdió (al abrir el popup o en una petición), se explica el motivo.
   const shownNotice: Notice | null =
     notice ??
-    (!submittedOnce && state.status === 'anonymous' && state.reason
+    (state !== dismissedState && state.status === 'anonymous' && state.reason
       ? { tone: 'warn', text: authErrorMessage(state.reason) }
       : null);
 
@@ -30,11 +32,25 @@ export function AccountView() {
     if (focusHeading) headingRef.current?.focus();
   }, [focusHeading, state.status]);
 
-  async function submit(action: (credentials: Credentials) => Promise<void>, credentials: Credentials) {
+  function startSubmit() {
     // Los avisos anteriores dejan de aplicar en cuanto se envía el formulario.
     setNotice(null);
-    setSubmittedOnce(true);
-    await action(credentials);
+    setDismissedState(state);
+  }
+
+  async function handleSignIn(credentials: Credentials) {
+    startSubmit();
+    await signIn(credentials);
+    setFocusHeading(true);
+  }
+
+  async function handleRegister(credentials: Credentials): Promise<AuthMode | void> {
+    startSubmit();
+    const result = await register(credentials);
+    if (result.status === 'pending-confirmation') {
+      setNotice({ tone: 'safe', text: confirmationSentMessage(result.email) });
+      return 'signin';
+    }
     setFocusHeading(true);
   }
 
@@ -77,11 +93,7 @@ export function AccountView() {
         <SignedInView user={state.user} onSignOut={handleSignOut} />
       )}
       {state.status === 'anonymous' && (
-        <AuthPanel
-          onSignIn={(credentials) => submit(signIn, credentials)}
-          onRegister={(credentials) => submit(register, credentials)}
-          autoFocus={!focusHeading}
-        />
+        <AuthPanel onSignIn={handleSignIn} onRegister={handleRegister} autoFocus={!focusHeading} />
       )}
     </>
   );

@@ -6,9 +6,12 @@ import type { AuthMode } from '@/utils/auth/validation';
 import { AuthForm } from './AuthForm';
 import { AUTH_PANEL_ID, AuthTabs, authTabId } from './AuthTabs';
 
+/** Si devuelve un modo, el panel cambia a esa pestaña (p. ej. tras pedir confirmar el correo). */
+type SubmitHandler = (credentials: Credentials) => Promise<AuthMode | void>;
+
 interface AuthPanelProps {
-  onSignIn: (credentials: Credentials) => Promise<void>;
-  onRegister: (credentials: Credentials) => Promise<void>;
+  onSignIn: SubmitHandler;
+  onRegister: SubmitHandler;
   autoFocus?: boolean;
 }
 
@@ -16,6 +19,14 @@ export function AuthPanel({ onSignIn, onRegister, autoFocus }: AuthPanelProps) {
   const [mode, setMode] = useState<AuthMode>('signin');
   const [email, setEmail] = useState('');
   const [pending, setPending] = useState(false);
+
+  async function handleSubmit(credentials: Credentials) {
+    const next = await (mode === 'register' ? onRegister : onSignIn)(credentials);
+    if (next) {
+      setPending(false);
+      setMode(next);
+    }
+  }
 
   return (
     <>
@@ -27,7 +38,7 @@ export function AuthPanel({ onSignIn, onRegister, autoFocus }: AuthPanelProps) {
           mode={mode}
           email={email}
           onEmailChange={setEmail}
-          onSubmit={mode === 'register' ? onRegister : onSignIn}
+          onSubmit={handleSubmit}
           onPendingChange={setPending}
           onSwitchMode={setMode}
           autoFocus={autoFocus}
