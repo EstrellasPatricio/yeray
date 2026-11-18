@@ -1,5 +1,8 @@
 import { isIP } from 'node:net';
 
+/** Sufijos de dominios de uso local o interno que nunca son sitios públicos. */
+const SUFIJOS_LOCALES = ['.localhost', '.local', '.internal', '.lan', '.home.arpa', '.corp', '.intranet'];
+
 /** Puntuación ficticia para desarrollar sin consultar la API de VirusTotal. */
 export function simularVirusTotal(url: string): number {
   let sitio: URL;
@@ -16,7 +19,7 @@ export function simularVirusTotal(url: string): number {
     !hostname.includes('.') ||
     isIP(hostname.replace(/^\[|\]$/g, '')) !== 0 ||
     hostname === 'localhost' ||
-    ['.localhost', '.local', '.internal'].some((sufijo) => hostname.endsWith(sufijo)) ||
+    SUFIJOS_LOCALES.some((sufijo) => hostname.endsWith(sufijo)) ||
     sitio.username !== '' ||
     sitio.password !== '' ||
     autoridad.includes(':') ||

@@ -1,43 +1,43 @@
-# VirusTotal Simulator Implementation Plan
+# Plan de implementación del simulador de VirusTotal
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Para agentes:** SUB-SKILL OBLIGATORIA: usa superpowers:executing-plans para implementar este plan tarea a tarea. Los pasos usan la sintaxis de casillas (`- [ ]`) para el seguimiento.
 
-**Goal:** Add a backend function that takes a site URL and returns a fictional random integer score from 0 to 100.
+**Objetivo:** Añadir una función de backend que reciba la URL de un sitio y devuelva una puntuación ficticia, un entero aleatorio entre 0 y 100.
 
-**Architecture:** A standalone TypeScript service validates the site-only URL and generates a score with `Math.random`. Node's test runner, loaded through the existing `tsx` dependency, tests the contract without external services.
+**Arquitectura:** Un servicio TypeScript independiente valida que la URL sea solo del sitio y genera una puntuación con `Math.random`. El test runner de Node, cargado mediante la dependencia `tsx` ya existente, prueba el contrato sin servicios externos.
 
-**Tech Stack:** TypeScript, Node.js, `tsx`; existing Fastify backend (no route changes).
+**Stack técnico:** TypeScript, Node.js, `tsx`; backend Fastify existente (sin cambios en las rutas).
 
-**Spec:** `docs/superpowers/specs/2026-11-18-virustotal-simulador-design.md`
+**Especificación:** `docs/superpowers/specs/2026-11-18-virustotal-simulador-design.md`
 
-## Global Constraints
+## Restricciones globales
 
-- Do not transmit or retain visited paths, queries, fragments, credentials, or ports.
-- Do not call VirusTotal, Supabase, or the network.
-- Do not add an HTTP endpoint in this change.
+- No transmitir ni conservar rutas visitadas, consultas, fragmentos, credenciales ni puertos.
+- No llamar a VirusTotal, a Supabase ni a la red.
+- No añadir un endpoint HTTP en este cambio.
 
-## Review Focus
+## Puntos de revisión
 
-- Invalid and non-HTTP URL: reject with `TypeError`.
-- Site URLs with a path, query, fragment, credentials, or port: reject with `TypeError`.
-- Local or private destinations: reject with `TypeError`.
-- Random values at the low and high edges: return 0 and 100 respectively.
-- Returned score: always an integer in [0, 100].
+- Cadena que no es una URL, protocolo distinto de `http`/`https` o nombre de host sin punto: se rechaza con `TypeError`.
+- URL del sitio con ruta distinta de `/`, consulta, fragmento, credenciales o puerto: se rechaza con `TypeError`. `https://ejemplo.com` y `https://ejemplo.com/` se aceptan.
+- `localhost`, dominios con sufijo local o interno (`.localhost`, `.local`, `.internal`, `.lan`, `.home.arpa`, `.corp`, `.intranet`) y cualquier IP literal, pública o privada: se rechazan con `TypeError`.
+- Extremos del valor aleatorio: si `Math.random()` devuelve 0, la puntuación es 0; si devuelve el mayor valor posible por debajo de 1, la puntuación es 100.
+- Puntuación devuelta: siempre un entero en [0, 100].
 
 ---
 
-### Task 1: Implement simulator service
+### Tarea 1: Implementar el servicio simulador
 
-**Files:**
-- Create: `backend/src/services/virustotal-simulator.ts`
-- Create: `backend/src/services/virustotal-simulator.test.ts`
-- Modify: `backend/package.json` (add `test` script)
+**Archivos:**
+- Crear: `backend/src/services/virustotal-simulator.ts`
+- Crear: `backend/src/services/virustotal-simulator.test.ts`
+- Modificar: `backend/package.json` (añadir el script `test`)
 
 **Interfaces:**
-- Produces: `simularVirusTotal(url: string): number`.
+- Produce: `simularVirusTotal(url: string): number`.
 
-- [x] **Step 1: Write failing tests** for accepted HTTP and HTTPS site URLs, invalid URLs, forbidden URL parts, local/private hosts, random boundaries, and integer range.
-- [x] **Step 2: Run `npm test` in `backend`** and confirm tests fail because the function is missing.
-- [x] **Step 3: Implement `simularVirusTotal(url: string): number`** using `URL` for parsing, validation before score generation, and `Math.floor(Math.random() * 101)` for an inclusive 0–100 integer.
-- [x] **Step 4: Run `npm test` and `npm run build`** in `backend`; both must exit 0.
-- [x] **Step 5: Review the diff** against the spec and commit the change on `codex/virustotal-simulador`.
+- [x] **Paso 1: Escribir tests que fallen** para URLs de sitio HTTP y HTTPS aceptadas, URLs inválidas, partes de URL prohibidas, hosts locales o internos e IP literales, límites del valor aleatorio y rango entero.
+- [x] **Paso 2: Ejecutar `npm test` en `backend`** y confirmar que los tests fallan porque la función no existe.
+- [x] **Paso 3: Implementar `simularVirusTotal(url: string): number`** usando `URL` para el análisis, validando antes de generar la puntuación y con `Math.floor(Math.random() * 101)` para obtener un entero entre 0 y 100, ambos incluidos.
+- [x] **Paso 4: Ejecutar `npm test` y `npm run build`** en `backend`; ambos deben terminar con código 0.
+- [x] **Paso 5: Revisar el diff** frente a la especificación y hacer commit del cambio en `codex/virustotal-simulador`.

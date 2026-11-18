@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { simularVirusTotal } from './virustotal-simulator.js';
 
 test('acepta una URL HTTP o HTTPS del sitio y devuelve un entero entre 0 y 100', () => {
-  for (const url of ['https://tienda.ejemplo.com/', 'http://tienda.ejemplo.com/']) {
+  for (const url of ['https://tienda.ejemplo.com/', 'http://tienda.ejemplo.com/', 'https://tienda.ejemplo.com']) {
     for (let i = 0; i < 100; i++) {
       const resultado = simularVirusTotal(url);
       assert.ok(Number.isInteger(resultado));
@@ -23,6 +23,7 @@ test('rechaza URLs inválidas, no web y con datos ajenos al sitio', () => {
   for (const url of [
     'no-es-una-url',
     'ftp://tienda.ejemplo.com/',
+    'https://tienda/',
     'https://usuario:clave@tienda.ejemplo.com/',
     'https://tienda.ejemplo.com:8443/',
     'https://tienda.ejemplo.com:443/',
@@ -36,10 +37,17 @@ test('rechaza URLs inválidas, no web y con datos ajenos al sitio', () => {
   }
 });
 
-test('rechaza destinos locales o privados', () => {
+test('rechaza destinos locales, dominios internos e IP literales', () => {
   for (const url of [
     'http://localhost/',
     'http://equipo.localhost/',
+    'http://impresora.local/',
+    'http://servicio.internal/',
+    'http://intranet.lan/',
+    'http://router.home.arpa/',
+    'http://app.corp/',
+    'http://portal.intranet/',
+    'http://8.8.8.8/',
     'http://127.0.0.1/',
     'http://10.0.0.1/',
     'http://172.16.0.1/',
