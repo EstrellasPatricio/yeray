@@ -24,3 +24,8 @@ web-ext.config.ts
 *.njsproj
 *.sln
 *.sw?
+
+# Variables de entorno locales
+.env
+.env.*
+!.env.example
