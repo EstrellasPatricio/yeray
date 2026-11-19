@@ -7,7 +7,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="app-frame">
       <header className="app-header">
         <span className="brand-mark">
-          <Icon name="shield" size={20} />
+          <Icon name="shield" size={23} />
         </span>
         <div className="brand-copy">
           <h1 className="brand-name">Yeray</h1>

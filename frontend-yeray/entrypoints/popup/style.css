@@ -4,9 +4,8 @@
   --on-strong: var(--surface);
   font-family: Inter, 'Segoe UI', Arial, sans-serif;
   font-size: 87.5%;
-  line-height: 1.4;
   color: var(--ink);
-  background: var(--surface);
+  background: var(--bg);
 }
 
 [data-theme='dark'] {
@@ -21,7 +20,8 @@ body {
   margin: 0;
   font-size: 0.9rem;
   color: var(--ink);
-  background: var(--surface);
+  /* Fondo que asoma en las esquinas redondeadas del marco. */
+  background: var(--bg);
 }
 
 button,
@@ -52,11 +52,14 @@ input:focus-visible,
   border: 0;
 }
 
-/* Marco */
+/* Marco: tamaño de panel de extensión de la maqueta (300 px, borde y esquinas de 12 px). */
 .app-frame {
   width: 300px;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
   background: var(--surface);
 }
 
@@ -102,7 +105,7 @@ input:focus-visible,
 
 main {
   flex: 1;
-  padding: 9px 9px 10px;
+  padding: 9px;
   background: var(--surface);
 }
 
@@ -156,6 +159,7 @@ main {
 
 .page-card p {
   margin: 0;
+  line-height: 1.4;
 }
 
 .eyebrow {
