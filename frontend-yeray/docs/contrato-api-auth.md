@@ -50,7 +50,7 @@ Si falta `code`, el cliente deduce el error por el estado: 400 es validación, 4
 - Contraseña al registrarse: de 8 a 72 caracteres, con al menos una letra y un número. El frontend ya lo valida, pero el backend debe repetir la validación.
 - El correo se compara sin distinguir mayúsculas y sin espacios exteriores.
 - Endpoints protegidos futuros: cabecera `Authorization: Bearer <accessToken>`, y `401` con `UNAUTHORIZED` si no vale. El cliente refresca una vez y repite la petición (`utils/api/authorized-fetch.ts`).
-- CORS: el popup llama desde `chrome-extension://<id>`. Con `@fastify/cors` y `origin: true` ya funciona.
+- CORS: el popup llama desde `chrome-extension://<id>`. Desde la PR #11 el backend solo admite los orígenes de `CORS_ORIGIN` (por defecto `http://localhost:5173`), así que hay que añadir ahí el origen de la extensión. El id aparece en `chrome://extensions` y cambia si se carga desde otra carpeta, salvo que se fije una clave en el manifest.
 - Puertos: el servidor de desarrollo de WXT usa el 3100, así que el 3000 queda para la API.
 
 ## Notas para implementarlo con Fastify y Supabase
