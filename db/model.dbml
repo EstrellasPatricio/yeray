@@ -1,0 +1,225 @@
+// =====================================================================
+// Yeray — Modelo de datos provisional (DBML)
+// =====================================================================
+
+Project yeray {
+  database_type: 'Postgres'
+  Note: 'Modelo provisional, sujeto a cambios.'
+}
+
+// ---------------------------------------------------------------------
+// ENUMS
+// ---------------------------------------------------------------------
+
+enum risk_level {
+  safe        // segura
+  suspicious  // sospechosa
+  malicious   // maliciosa
+  unknown     // sin veredicto (fuente no disponible)
+}
+
+enum analysis_source {
+  virustotal
+  ai_text          // detección de ingeniería social (NLP)
+  dom_structure    // DOM / HTML / scripts
+  url_analysis     // ofuscación, dominios sospechosos
+  cookies
+  gdpr
+  trustpilot
+  community_reviews
+}
+
+enum source_status {
+  ok
+  degraded
+  unavailable
+  quota_exhausted  // 429 / límite diario
+  timeout
+  malformed_response
+}
+
+enum exception_scope {
+  exact_host
+  host_and_subdomains
+}
+
+enum cookie_phase {
+  before_consent
+  after_consent
+}
+
+// ---------------------------------------------------------------------
+// USUARIOS Y SESIONES (HU#9, #10, #14, #17, #18)
+// ---------------------------------------------------------------------
+
+Table users {
+  id integer [pk, increment]
+  email varchar(255) [not null]
+  password_hash varchar(255) [not null, note: 'hash con sal.']
+  public_alias varchar(40) [note: 'Alias mostrado en reseñas públicas; evita exponer email']
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp
+  deleted_at timestamp [note: 'Eliminación lógica (HU#17); los datos asociados se tratan según decisión de producto']
+  // ToDo: Cuentas con google
+
+  // DBML no representa índices parciales. Implementar en PostgreSQL:
+  // CREATE UNIQUE INDEX uq_users_email_active ON users (lower(email)) WHERE deleted_at IS NULL;
+}
+
+// se podria no guardar sesiones para invalidar tokens (ejemplo: timestamp valid_after)
+Table sessions {
+  id integer [pk, increment]
+  user_id integer [not null, ref: > users.id]
+  token_hash varchar(128) [not null, unique, note: 'Se guarda el hash del token, no el token']
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  expires_at timestamp [not null, note: 'Según el plazo elegido (HU#10)']
+  last_used_at timestamp
+  revoked_at timestamp [note: 'Cierre de sesión (HU#18)']
+
+  indexes {
+    (user_id, revoked_at)
+  }
+}
+
+Table password_reset_tokens {
+  id integer [pk, increment]
+  user_id integer [not null, ref: > users.id]
+  token_hash varchar(128) [not null, unique]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  expires_at timestamp [not null]
+  used_at timestamp [note: 'Un solo uso (HU#9)']
+}
+
+// ---------------------------------------------------------------------
+// DOMINIOS, EXCEPCIONES Y LISTA DE RIESGO COMPARTIDA (HU#3)
+// ---------------------------------------------------------------------
+
+Table domains {
+  id integer [pk, increment]
+  host varchar(253) [not null, unique, note: 'Host normalizado']
+  first_seen_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table domain_exceptions {
+  id integer [pk, increment]
+  user_id integer [not null, ref: > users.id]
+  domain_id integer [not null, ref: > domains.id]
+  scope exception_scope [not null, default: 'exact_host']
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (user_id, domain_id, scope) [unique, note: 'Sin duplicados']
+  }
+}
+
+// ---------------------------------------------------------------------
+// RESEÑAS (HU#4)
+// ---------------------------------------------------------------------
+
+Table reviews {
+  id integer [pk, increment]
+  user_id integer [not null, ref: > users.id]
+  domain_id integer [not null, ref: > domains.id]
+  rating smallint [not null]
+  comment varchar(1000) [note: 'Opcional; validar longitud en cliente y servidor']
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamp
+
+  indexes {
+    (user_id, domain_id) [unique, note: 'Una reseña por usuario y dominio']
+    domain_id
+  }
+
+  checks {
+    `rating between 1 and 5` [name: 'ck_rating_range']
+  }
+
+  Note: 'Valoración media = AVG(rating) y COUNT(*) por domain_id (consulta/vista). La vista pública usa users.public_alias, nunca el email.'
+}
+
+// ---------------------------------------------------------------------
+// CUOTAS DE APIs EXTERNAS (HU#5, HU#11, RNF02)
+// ---------------------------------------------------------------------
+
+Table api_quota_usage {
+  id integer [pk, increment]
+  provider analysis_source [not null, note: 'virustotal / trustpilot (OpenWeb Ninja)']
+  period_start date [not null]
+  period_duration varchar(10) [not null, note: 'en minutos']
+  requests_used integer [not null, default: 0]
+  request_limit integer [not null]
+}
+
+// ---------------------------------------------------------------------
+// ANÁLISIS E INFORME VISUAL (HU#6, #11, #13, #19, #20)
+// ---------------------------------------------------------------------
+
+Table analyses {
+  id integer [pk, increment]
+  domain_id integer [not null, ref: > domains.id]
+  url text [not null, note: 'Sin query string ni fragmento (minimización de datos)']
+  global_risk risk_level [not null, default: 'unknown']
+  global_score smallint
+  is_degraded boolean [not null, default: false, note: 'Alguna fuente no disponible']
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (domain_id, created_at)
+  }
+
+  checks {
+    `global_score is null or global_score between 0 and 100` [name: 'ck_global_score']
+  }
+}
+
+Table user_history {
+  user_id integer [not null]
+  analysis_id integer [not null]
+  viewed_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (user_id, analysis_id) [pk, note: 'Un registro por usuario y análisis; actualizar viewed_at al volver a consultarlo']
+    (user_id, viewed_at)
+  }
+}
+
+Ref: user_history.user_id > users.id [delete: cascade]
+Ref: user_history.analysis_id > analyses.id
+
+Table analysis_results {
+  id integer [pk, increment]
+  analysis_id integer [not null, ref: > analyses.id]
+  source analysis_source [not null]
+  status source_status [not null, default: 'ok']
+  verdict risk_level [not null, default: 'unknown']
+  score smallint
+  confidence decimal(4,3) [note: '0.000 - 1.000 (modelo de IA)']
+  summary text
+  detail_url text [note: 'Enlace al detalle (p. ej. informe VirusTotal)']
+  model_version varchar(50)
+  raw_payload json [note: 'Respuesta cruda opcional, para depuración']
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (analysis_id, source) [unique, note: 'Una tarjeta por fuente y análisis']
+  }
+}
+
+// ---------------------------------------------------------------------
+// [AMPLIACIÓN] COOKIES Y RASTREADORES (HU#7)
+// ---------------------------------------------------------------------
+// ToDo: parte pendiente de crear en funcion de las necesidades del backend y
+// hasta donde queramos llegar
+
+Table cookie_findings {
+  id integer [pk, increment]
+  analysis_id integer [not null, ref: > analyses.id]
+  phase cookie_phase [not null]
+  name varchar(200) [not null]
+  cookie_domain varchar(253) [not null]
+  is_third_party boolean [not null, default: false]
+  secure boolean
+  http_only boolean
+  same_site varchar(10) [note: 'strict | lax | none']
+  // No se almacena el valor de la cookie (dato sensible)
+}
