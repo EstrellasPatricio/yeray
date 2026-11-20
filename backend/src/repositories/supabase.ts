@@ -8,3 +8,14 @@ if (!supabaseUrl || !supabaseKey) {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
+
+/** Comprueba que el cliente puede consultar la base de datos en Supabase. */
+export async function verificarConexionBD(): Promise<boolean> {
+    const { error } = await supabase.from('domains').select('id').limit(1);
+
+    if (error) {
+        throw new Error(`Error al conectar con Supabase: ${error.message}`);
+    }
+
+    return true;
+}

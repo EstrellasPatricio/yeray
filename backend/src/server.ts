@@ -1,11 +1,15 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { pingRoutes } from './controllers/ping.controller.js';
+import { verificarConexionBD } from './repositories/supabase.js';
 
 const fastify = Fastify({ logger: true });
 
 const start = async () => {
     try {
+        await verificarConexionBD();
+        console.log('Conexión con Supabase verificada correctamente');
+
         const allowedOrigins = process.env.CORS_ORIGIN
             ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
             : ['http://localhost:5173'];
