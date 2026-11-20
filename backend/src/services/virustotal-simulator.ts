@@ -15,6 +15,9 @@ export function simularVirusTotal(url: string): number {
   const hostname = sitio.hostname.replace(/\.$/, '').toLowerCase();
   const autoridad = url.match(/^https?:\/\/([^/?#]+)/i)?.[1] ?? '';
   if (
+    url !== url.trim() ||
+    /[\t\r\n]/.test(url) ||
+
     !['http:', 'https:'].includes(sitio.protocol) ||
     !hostname.includes('.') ||
     isIP(hostname.replace(/^\[|\]$/g, '')) !== 0 ||
