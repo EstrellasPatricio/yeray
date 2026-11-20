@@ -43,19 +43,27 @@ enum exception_scope {
   host_and_subdomains
 }
 
+enum cookie_phase {
+  before_consent
+  after_consent
+}
+
 // ---------------------------------------------------------------------
 // USUARIOS Y SESIONES (HU#9, #10, #14, #17, #18)
 // ---------------------------------------------------------------------
 
 Table users {
   id integer [pk, increment]
-  email varchar(255) [not null, unique]
+  email varchar(255) [not null]
   password_hash varchar(255) [not null, note: 'hash con sal.']
   public_alias varchar(40) [note: 'Alias mostrado en reseñas públicas; evita exponer email']
   created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
   updated_at timestamp
   deleted_at timestamp [note: 'Eliminación lógica (HU#17); los datos asociados se tratan según decisión de producto']
   // ToDo: Cuentas con google
+
+  // DBML no representa índices parciales. Implementar en PostgreSQL:
+  // CREATE UNIQUE INDEX uq_users_email_active ON users (lower(email)) WHERE deleted_at IS NULL;
 }
 
 // se podria no guardar sesiones para invalidar tokens (ejemplo: timestamp valid_after)
@@ -148,7 +156,6 @@ Table api_quota_usage {
 
 Table analyses {
   id integer [pk, increment]
-  user_id integer [ref: > users.id, note: 'NULL si el usuario no ha iniciado sesión']
   domain_id integer [not null, ref: > domains.id]
   url text [not null, note: 'Sin query string ni fragmento (minimización de datos)']
   global_risk risk_level [not null, default: 'unknown']
@@ -158,13 +165,26 @@ Table analyses {
 
   indexes {
     (domain_id, created_at)
-    user_id
   }
 
   checks {
     `global_score is null or global_score between 0 and 100` [name: 'ck_global_score']
   }
 }
+
+Table user_history {
+  user_id integer [not null]
+  analysis_id integer [not null]
+  viewed_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (user_id, analysis_id) [pk, note: 'Un registro por usuario y análisis; actualizar viewed_at al volver a consultarlo']
+    (user_id, viewed_at)
+  }
+}
+
+Ref: user_history.user_id > users.id [delete: cascade]
+Ref: user_history.analysis_id > analyses.id
 
 Table analysis_results {
   id integer [pk, increment]
@@ -194,6 +214,7 @@ Table analysis_results {
 Table cookie_findings {
   id integer [pk, increment]
   analysis_id integer [not null, ref: > analyses.id]
+  phase cookie_phase [not null]
   name varchar(200) [not null]
   cookie_domain varchar(253) [not null]
   is_third_party boolean [not null, default: false]
