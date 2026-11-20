@@ -22,6 +22,10 @@ test('incluye ambos extremos del intervalo aleatorio', (t) => {
 test('rechaza URLs inválidas, no web y con datos ajenos al sitio', () => {
   for (const url of [
     'no-es-una-url',
+    ' https://tienda.ejemplo.com:8443/',
+    ' https://tienda.ejemplo.com:443/',
+    'https://tienda.ejemplo.com/ ',
+    'https://tienda.ejemplo.com:\t8443/',
     'ftp://tienda.ejemplo.com/',
     'https://tienda/',
     'https://usuario:clave@tienda.ejemplo.com/',
