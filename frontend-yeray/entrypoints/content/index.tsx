@@ -1,6 +1,6 @@
 import ReactDOM from 'react-dom/client';
 
-import App from './App.tsx';
+import App from './App';
 import './style.css';
 
 export default defineContentScript({
@@ -15,9 +15,7 @@ export default defineContentScript({
 
       onMount: (container) => {
         const root = ReactDOM.createRoot(container);
-
         root.render(<App />);
-
         return root;
       },
 
