@@ -60,6 +60,7 @@ function App() {
   const [theme, setTheme] = useState<Theme>(() => localStorage.getItem('yeray-theme') === 'dark' ? 'dark' : 'light');
   const [fontScale, setFontScale] = useState(() => Number(localStorage.getItem('yeray-font-scale')) || 1);
   const [notifications, setNotifications] = useState(() => localStorage.getItem('yeray-notifications') !== 'false');
+  const [draftKey, setDraftKey] = useState('');
   const [domain, setDomain] = useState('Cargando...');
   const [riskState, setRiskState] = useState<RiskState>('pending');
   const [reportDomain, setReportDomain] = useState('');
@@ -102,7 +103,15 @@ function App() {
     const loadTab = async () => {
       try {
         const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-        if (!tab?.url) return;
+        if (!tab?.url || tab.id == null) return;
+        const key = `yeray-report:${tab.id}:${tab.url}`;
+        setDraftKey(key);
+        const stored = await browser.storage.local.get(key);
+        const draft = stored[key] as { details?: string; tags?: string[]; rating?: number; selectedText?: string; resume?: boolean } | undefined;
+        if (draft) {
+          setDetails(draft.details ?? ''); setSelectedTags(draft.tags ?? []); setRating(draft.rating ?? 50); setSelectedText(draft.selectedText ?? '');
+          if (draft.resume) setView('reportForm');
+        }
         const currentDomain = new URL(tab.url).hostname.replace(/^www\./, '') || 'Página actual';
         setDomain(currentDomain);
         setRiskState(currentDomain === 'example.com' ? 'risk' : 'pending');
@@ -113,16 +122,6 @@ function App() {
     };
     void loadTab();
   }, []);
-
-  useEffect(() => {
-    const loadSelection = async () => {
-      const stored = await browser.storage.local.get(['yeray-selected-text', 'yeray-selected-domain']);
-      if (stored['yeray-selected-domain'] === domain && typeof stored['yeray-selected-text'] === 'string') {
-        setSelectedText(stored['yeray-selected-text']);
-      }
-    };
-    if (domain !== 'Cargando...') void loadSelection();
-  }, [domain, view]);
 
   useEffect(() => { localStorage.setItem('yeray-mode', mode); }, [mode]);
   useEffect(() => { localStorage.setItem('yeray-language', language); }, [language]);
@@ -161,7 +160,7 @@ function App() {
   };
 
   const resetReportForm = () => {
-    setSelectedTags([]); setSelectionError(''); setRating(50); setDetails(''); setImageName(''); setReportSent(false); setView('reportForm');
+    setSelectionError(''); setReportSent(false); setView('reportForm');
   };
 
   const startSelection = async () => {
@@ -169,9 +168,9 @@ function App() {
       setSelectionError('');
       const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
       if (!tab?.id) throw new Error('No active tab');
-      await browser.storage.local.remove(['yeray-selected-text', 'yeray-selected-domain', 'yeray-selected-url']);
-      setSelectedText('');
-      await browser.tabs.sendMessage(tab.id, { type: 'YERAY_START_TEXT_SELECTION' });
+      if (!draftKey || `yeray-report:${tab.id}:${tab.url}` !== draftKey) throw new Error('Page changed');
+      await browser.storage.local.set({ [draftKey]: { details, tags: selectedTags, rating, selectedText, resume: true } });
+      await browser.tabs.sendMessage(tab.id, { type: 'YERAY_START_TEXT_SELECTION', draftKey, expectedUrl: tab.url });
       window.close();
     } catch (error) {
       console.error(error);
@@ -182,7 +181,7 @@ function App() {
   const sendReport = async () => {
     const item: SavedReport = { id: Date.now(), domain, tags: selectedTags, rating, details, selectedText, when: new Date().toLocaleTimeString(language === 'es' ? 'es-ES' : 'en-US', { hour: '2-digit', minute: '2-digit' }) };
     setReports((current) => [item, ...current]);
-    await browser.storage.local.remove(['yeray-selected-text', 'yeray-selected-domain', 'yeray-selected-url']);
+    if (draftKey) await browser.storage.local.remove(draftKey);
     setSelectedText(''); setReportSent(true);
   };
 
@@ -307,11 +306,7 @@ function App() {
                     onClick={async () => {
                       setSelectedText('');
   
-                      await browser.storage.local.remove([
-                        'yeray-selected-text',
-                        'yeray-selected-domain',
-                        'yeray-selected-url',
-                      ]);
+                      if (draftKey) { const data = await browser.storage.local.get(draftKey); await browser.storage.local.set({ [draftKey]: { ...(data[draftKey] as object), selectedText: '' } }); }
                     }}
                   >
                     {t.removeSelection}
