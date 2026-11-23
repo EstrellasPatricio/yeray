@@ -80,6 +80,7 @@ function App() {
   const [selectedText, setSelectedText] = useState('');
   const [selectionError, setSelectionError] = useState('');
   const [rating, setRating] = useState(50);
+  const [reportMessage, setReportMessage] = useState('');
   const [details, setDetails] = useState('');
   const [imageName, setImageName] = useState('');
   const [reportSent, setReportSent] = useState(false);
@@ -179,11 +180,12 @@ function App() {
     }
   };
 
-  const sendReport = async () => {
-    const item: SavedReport = { id: Date.now(), domain, tags: selectedTags, rating, details, selectedText, when: new Date().toLocaleTimeString(language === 'es' ? 'es-ES' : 'en-US', { hour: '2-digit', minute: '2-digit' }) };
-    setReports((current) => [item, ...current]);
-    await browser.storage.local.remove(['yeray-selected-text', 'yeray-selected-domain', 'yeray-selected-url']);
-    setSelectedText(''); setReportSent(true);
+  const sendReport = () => {
+    if (!Number.isInteger(rating) || rating < 0 || rating > 100) {
+      setReportMessage(language === 'es' ? 'Introduce un número entero entre 0 y 100.' : 'Enter a whole number from 0 to 100.');
+      return;
+    }
+    setReportMessage(language === 'es' ? 'El envío todavía no está disponible: falta el contrato de persistencia del backend.' : 'Sending is not yet available: the backend persistence contract is pending.');
   };
 
   const toggleTag = (tag: string) => setSelectedTags((current) => current.includes(tag) ? current.filter((x) => x !== tag) : [...current, tag]);
@@ -326,6 +328,8 @@ function App() {
               <div className="rating-row">
                 <input
                   type="range"
+                  aria-label={t.dangerRating}
+                  step="1"
                   min="0"
                   max="100"
                   value={rating}
@@ -336,6 +340,8 @@ function App() {
   
                 <input
                   type="number"
+                  aria-label={t.dangerRating}
+                  step="1"
                   min="0"
                   max="100"
                   value={rating}
@@ -400,10 +406,11 @@ function App() {
                 </p>
               )}
   
+              {reportMessage && <p role="status">{reportMessage}</p>}
               <button
                 className="primary-button"
                 type="button"
-                onClick={() => void sendReport()}
+                onClick={sendReport}
               >
                 {t.submit}
                 <Icon name="next" />
