@@ -51,10 +51,10 @@ jobs:
         run: pnpm run compile
 
       - name: Lint
-        run: pnpm run lint --if-present
+        run: pnpm run --if-present lint
 
       - name: Compilar extension
         run: pnpm run build
 
       - name: Tests
-        run: pnpm test --if-present
+        run: pnpm run --if-present test
