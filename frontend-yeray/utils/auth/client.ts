@@ -1,13 +1,11 @@
 import { createAuthorizedFetch } from '../api/authorized-fetch';
+import { apiBaseUrl } from '../api/config';
 import { authStorage } from '../storage/auth-storage';
 import type { AuthApi } from './contract';
 import { createHttpAuthApi } from './http-client';
 import { createMockAuthApi } from './mock-client';
 import { createSessionManager } from './session';
 
-const DEFAULT_API_BASE_URL = 'http://localhost:3000';
-
-export const apiBaseUrl = import.meta.env.WXT_API_BASE_URL || DEFAULT_API_BASE_URL;
 export const isAuthMockEnabled = import.meta.env.WXT_AUTH_MOCK === 'true';
 
 function createAuthApi(): AuthApi {

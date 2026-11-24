@@ -2,17 +2,42 @@ import type { ReactNode } from 'react';
 
 import { Icon } from './icons';
 
-export function AppShell({ children }: { children: ReactNode }) {
+export type PopupView = 'home' | 'account';
+
+interface AppShellProps {
+  view: PopupView;
+  onNavigate: (view: PopupView) => void;
+  children: ReactNode;
+}
+
+export function AppShell({ view, onNavigate, children }: AppShellProps) {
   return (
     <div className="app-frame">
       <header className="app-header">
-        <span className="brand-mark">
+        <button
+          type="button"
+          className="brand-mark"
+          aria-label="Yeray, ir al inicio"
+          onClick={() => onNavigate('home')}
+        >
           <Icon name="shield" size={23} />
-        </span>
+        </button>
         <div className="brand-copy">
           <h1 className="brand-name">Yeray</h1>
           <p className="brand-tagline">Protección inteligente</p>
         </div>
+        <nav className="header-actions" aria-label="Acciones">
+          <button
+            type="button"
+            className={`icon-button${view === 'account' ? ' current' : ''}`}
+            aria-label="Cuenta Yeray"
+            title="Cuenta Yeray"
+            aria-current={view === 'account' ? 'page' : undefined}
+            onClick={() => onNavigate('account')}
+          >
+            <Icon name="user" size={18} />
+          </button>
+        </nav>
       </header>
       <main>{children}</main>
       <footer className="footer">

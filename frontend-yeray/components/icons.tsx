@@ -32,6 +32,19 @@ const PATHS = {
       <path d="M12 11v5m0-9h.01" />
     </>
   ),
+  globe: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" />
+    </>
+  ),
+  arrow: <path d="m15 18-6-6 6-6M9 12h11" />,
+  document: (
+    <>
+      <path d="M6 3h8l4 4v14H6z" />
+      <path d="M14 3v5h5M9 12h6M9 16h6" />
+    </>
+  ),
 };
 
 export type IconName = keyof typeof PATHS;
