@@ -1,6 +1,7 @@
 {
   "name": "yeray-backend",
   "version": "1.0.0",
+  "packageManager": "pnpm@10.34.8",
   "description": "",
   "main": "dist/server.js",
   "scripts": {
