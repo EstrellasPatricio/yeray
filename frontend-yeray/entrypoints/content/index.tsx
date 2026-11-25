@@ -1,11 +1,10 @@
 import ReactDOM from 'react-dom/client';
 
-import App from './App.tsx';
-
+import App from './App';
 import './style.css';
 
 export default defineContentScript({
-  matches: ['*://*.google.com/*'],
+  matches: ['<all_urls>'],
   cssInjectionMode: 'ui',
 
   async main(ctx) {
@@ -13,11 +12,13 @@ export default defineContentScript({
       name: 'frontend-yeray-ui',
       position: 'inline',
       anchor: 'body',
+
       onMount: (container) => {
         const root = ReactDOM.createRoot(container);
         root.render(<App />);
         return root;
       },
+
       onRemove: (root) => {
         root?.unmount();
       },
