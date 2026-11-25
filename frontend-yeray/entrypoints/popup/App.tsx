@@ -182,6 +182,7 @@ function App() {
     const item: SavedReport = { id: Date.now(), domain, tags: selectedTags, rating, details, selectedText, when: new Date().toLocaleTimeString(language === 'es' ? 'es-ES' : 'en-US', { hour: '2-digit', minute: '2-digit' }) };
     setReports((current) => [item, ...current]);
     if (draftKey) await browser.storage.local.remove(draftKey);
+    setSelectedTags([]); setRating(50); setDetails(''); setImageName('');
     setSelectedText(''); setReportSent(true);
   };
 

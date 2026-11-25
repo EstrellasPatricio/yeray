@@ -17,6 +17,7 @@ function App() {
   const [warningVisible, setWarningVisible] = useState(true);
   const [showDetails, setShowDetails] = useState(false);
   const [selectionKey, setSelectionKey] = useState('');
+  const [selectionUrl, setSelectionUrl] = useState('');
   const [selectionActive, setSelectionActive] = useState(false);
   const [selectionSaved, setSelectionSaved] = useState(false);
 
@@ -29,6 +30,7 @@ function App() {
         message.type === 'YERAY_START_TEXT_SELECTION' && 'draftKey' in message && typeof message.draftKey === 'string' && 'expectedUrl' in message && message.expectedUrl === window.location.href
       ) {
         setSelectionKey(message.draftKey);
+        setSelectionUrl(message.expectedUrl);
         setSelectionActive(true);
         setSelectionSaved(false);
       }
@@ -42,10 +44,19 @@ function App() {
     if (!selectionActive) return;
 
     const captureSelection = async () => {
+      if (window.location.href !== selectionUrl) {
+        setSelectionActive(false);
+        return;
+      }
+
       const selectedText = window.getSelection()?.toString().trim() ?? '';
       if (!selectedText) return;
 
       const stored = await browser.storage.local.get(selectionKey);
+      if (window.location.href !== selectionUrl) {
+        setSelectionActive(false);
+        return;
+      }
       await browser.storage.local.set({ [selectionKey]: { ...(stored[selectionKey] as object), selectedText, resume: true } });
 
       window.getSelection()?.removeAllRanges();
@@ -57,7 +68,7 @@ function App() {
 
     document.addEventListener('mouseup', captureSelection);
     return () => document.removeEventListener('mouseup', captureSelection);
-  }, [selectionActive, selectionKey]);
+  }, [selectionActive, selectionKey, selectionUrl]);
 
   if (!isRiskDemo && !selectionActive && !selectionSaved) {
     return null;
