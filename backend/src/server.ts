@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { pingRoutes } from './controllers/ping.controller.js';
+import { readyRoutes } from './controllers/ready.controller.js';
 
 const fastify = Fastify({ logger: true });
 
@@ -12,6 +13,7 @@ const start = async () => {
 
         await fastify.register(cors, { origin: allowedOrigins });
         await fastify.register(pingRoutes);
+        await fastify.register(readyRoutes);
 
         const port = Number(process.env.PORT) || 3000;
         await fastify.listen({ port, host: '0.0.0.0' });
