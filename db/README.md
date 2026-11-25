@@ -12,7 +12,8 @@ Este directorio contiene el esquema SQL ejecutable de Yeray (`db/schema.sql`), g
    - En el menú lateral izquierdo de Supabase, abre **SQL Editor** → **New query**.
    - Copia todo el contenido de `db/schema.sql`, pégalo en el editor y pulsa **Run**.
    - Debe finalizar con `Success. No rows returned`.
-   - Comprueba en **Table Editor** que se han creado las 11 tablas (`users`, `sessions`, `password_reset_tokens`, `domains`, `domain_exceptions`, `reviews`, `api_quota_usage`, `analyses`, `user_history`, `analysis_results` y `cookie_findings`).
+   - Si la base de datos ya tenía aplicado un `schema.sql` anterior, ejecuta solo los archivos de `db/migrations/` que falten, en orden de fecha.
+   - Comprueba en **Table Editor** que se han creado las 12 tablas (`users`, `sessions`, `password_reset_tokens`, `domains`, `domain_exceptions`, `reviews`, `page_scores`, `api_quota_usage`, `analyses`, `user_history`, `analysis_results` y `cookie_findings`).
 
 3. **Configurar las variables de entorno del backend**
    - En `backend/`, crea el archivo `.env` a partir de `backend/.env.example`.
