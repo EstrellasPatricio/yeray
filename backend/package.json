@@ -4,6 +4,7 @@
   "description": "",
   "main": "dist/server.js",
   "scripts": {
+    "test": "node --experimental-strip-types --test test/virustotal.test.mjs",
     "dev": "tsx watch --env-file-if-exists=.env src/server.ts",
     "build": "tsc",
     "start": "node --env-file-if-exists=.env dist/server.js"
