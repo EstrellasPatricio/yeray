@@ -2,7 +2,7 @@
 
 ## Licencia escogida
 
-GPL, para el equipo es importante que los proyectos derivados sigan teniendo un impacto en la comunidad y sean de código abierto. Queremos evitar que una corporación se aproveche del proyecto y obtenga un beneficio comercial
+GPL v3, para el equipo es importante que los proyectos derivados sigan teniendo un impacto en la comunidad y sean de código abierto. Queremos evitar que una corporación se aproveche del proyecto y obtenga un beneficio comercial
 
 ## Contenido mínimo del README
 
