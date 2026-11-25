@@ -1,6 +1,6 @@
-# Yerai
+# Yeray
 
-**Yerai** es un proyecto de extensión de navegador para ayudar a identificar riesgos al visitar tiendas en línea. Combina señales de reputación, análisis del contenido de la página y explicaciones comprensibles para que la persona pueda decidir con más información antes de comprar.
+**Yeray** es un proyecto de extensión de navegador para ayudar a identificar riesgos al visitar tiendas en línea. Combina señales de reputación, análisis del contenido de la página y explicaciones comprensibles para que la persona pueda decidir con más información antes de comprar.
 
 > **Estado:** fase inicial de desarrollo. El repositorio remoto todavía no contiene una versión ejecutable; la arquitectura y las funcionalidades descritas a continuación son las previstas por el equipo y pueden evolucionar.
 
