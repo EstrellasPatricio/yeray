@@ -13,7 +13,7 @@
 
 ## Verificación
 
-Desde `backend/`, `npm test` ejecuta las pruebas locales sin clave y `npm run build` compila el backend. Para una prueba manual, configura `VIRUSTOTAL_API_KEY` en `.env`, ejecuta `npm run dev` y realiza una petición como esta desde PowerShell. Usa un sitio público de prueba que estés autorizado a consultar.
+Desde `backend/`, `pnpm test` ejecuta las pruebas locales sin clave y `pnpm run build` compila el backend. Para una prueba manual, configura `VIRUSTOTAL_API_KEY` en `.env`, ejecuta `pnpm run dev` y realiza una petición como esta desde PowerShell. Usa un sitio público de prueba que estés autorizado a consultar.
 
 ```powershell
 $payload = @{ hostname = 'www.iana.org'; protocolo = 'https' } | ConvertTo-Json
